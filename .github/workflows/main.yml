@@ -133,6 +133,14 @@ jobs:
           npm install --prefix .ci-tools/typescript --no-audit --no-fund typescript@5.9.3
           .\.ci-tools\typescript\node_modules\.bin\tsc.cmd --version
 
+      - name: Install workflow plugin dependencies
+        run: |
+          corepack pnpm --version
+          Push-Location plugins/packages/buildin/workflow
+          corepack pnpm install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { throw "pnpm install failed with exit code $LASTEXITCODE" }
+          Pop-Location
+
       - name: Generate self-signed Android signing material
         run: |
           $secretsDir = "tools/release/secrets"
