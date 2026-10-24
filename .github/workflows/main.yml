@@ -1,9 +1,8 @@
 name: DSH Build Android APK
 
-# 目的：在 GitHub 托管 runner 上编译 Operit2 的 arm64-v8a release APK。
-# 与仓库自带 android-flutter-build.yml 的唯一区别：
-#   不在仓库里读取 4 个签名 secret，而是在 runner 内部用 keytool 现场生成一个
-#   自签名 keystore，因此不需要配置任何 secret 就能出包（可安装，但不是官方签名）。
+# 在 GitHub 托管 runner 上编译 Operit2 的 arm64-v8a release APK。
+# 与仓库自带 android-flutter-build.yml 的唯一区别：不读 4 个签名 secret，
+# 而是在 runner 内部用 keytool 现场生成自签名 keystore，因此零 secret 也能出包。
 
 on:
   workflow_dispatch:
@@ -128,15 +127,14 @@ jobs:
           $keystore = Join-Path $secretsDir "operit2-release.keystore"
           $pass = "operit2local"
           $alias = "operit2"
-          $keytool = Join-Path $env:JAVA_HOME "bin\keytool.exe"
-          & $keytool -genkeypair -v -keystore $keystore -storetype PKCS12 ^
-            -storepass $pass -keypass $pass -alias $alias ^
-            -keyalg RSA -keysize 2048 -validity 10000 ^
-            -dname "CN=Operit2 Local Build,O=Local,C=CN"
+          $keytool = if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin\keytool.exe"))) { Join-Path $env:JAVA_HOME "bin\keytool.exe" } else { "keytool" }
+          Write-Host "keytool: $keytool"
+          $dname = "CN=Operit2 Local Build,O=Local,C=CN"
+          & $keytool -genkeypair -v -keystore $keystore -storetype PKCS12 -storepass $pass -keypass $pass -alias $alias -keyalg RSA -keysize 2048 -validity 10000 -dname $dname
           if ($LASTEXITCODE -ne 0) { throw "keytool failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path -LiteralPath $keystore)) { throw "keystore not created: $keystore" }
           $content = "RELEASE_STORE_FILE=operit2-release.keystore`nRELEASE_STORE_PASSWORD=$pass`nRELEASE_KEY_ALIAS=$alias`nRELEASE_KEY_PASSWORD=$pass`n"
-          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-          [System.IO.File]::WriteAllText((Join-Path $secretsDir "android-signing.properties"), $content, $utf8NoBom)
+          [System.IO.File]::WriteAllText((Join-Path $secretsDir "android-signing.properties"), $content, (New-Object System.Text.UTF8Encoding($false)))
           Get-Content (Join-Path $secretsDir "android-signing.properties")
 
       - name: Check build environment
