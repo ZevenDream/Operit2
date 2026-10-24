@@ -63,6 +63,9 @@ jobs:
       RUSTFLAGS: -Awarnings
       RUST_TOOLCHAIN_VERSION: 1.95.0
       FVM_VERSION: 4.3.0
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      COREPACK_ENABLE_STRICT: "0"
+      CARGO_TERM_COLOR: always
     defaults:
       run:
         shell: pwsh
@@ -119,6 +122,16 @@ jobs:
           Expand-Archive -Path $archive -DestinationPath $packageDir -Force
           $libclang = Join-Path $packageDir "runtimes/win-x64/native/libclang.dll"
           if (-not (Test-Path -LiteralPath $libclang)) { throw "libclang missing at $libclang" }
+
+      - name: Prepare Python virtual environment
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe --version
+
+      - name: Prepare repository TypeScript compiler
+        run: |
+          npm install --prefix .ci-tools/typescript --no-audit --no-fund typescript@5.9.3
+          .\.ci-tools\typescript\node_modules\.bin\tsc.cmd --version
 
       - name: Generate self-signed Android signing material
         run: |
