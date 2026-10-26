@@ -133,6 +133,20 @@ jobs:
           npm install --prefix .ci-tools/typescript --no-audit --no-fund typescript@5.9.3
           .\.ci-tools\typescript\node_modules\.bin\tsc.cmd --version
 
+      - name: Enable corepack pnpm shim
+        run: |
+          corepack enable pnpm
+          $nodeDir = Split-Path (Get-Command node).Source
+          if (-not (Test-Path (Join-Path $nodeDir "pnpm.cmd"))) {
+            Write-Host "corepack did not provide a pnpm shim, installing pnpm 10.7.0 globally"
+            npm install -g pnpm@10.7.0
+            if ($LASTEXITCODE -ne 0) { throw "pnpm installation failed with exit code $LASTEXITCODE" }
+          }
+          $pnpm = Join-Path $nodeDir "pnpm.cmd"
+          if (-not (Test-Path $pnpm)) { throw "pnpm shim not found at $pnpm" }
+          & $pnpm --version
+          if ($LASTEXITCODE -ne 0) { throw "pnpm shim failed with exit code $LASTEXITCODE" }
+
       - name: Install workflow plugin dependencies
         run: |
           corepack pnpm --version
